@@ -16,12 +16,12 @@ template<class _Ty,
 	typedef _Ty value_type;
 	typedef integral_constant<_Ty, _Val> type;
 
-	constexpr operator value_type() const _NOEXCEPT
+	constexpr operator value_type() const
 	{	// return stored value
 		return (value);
 	}
 
-	constexpr value_type operator()() const _NOEXCEPT
+	constexpr value_type operator()() const
 	{	// return stored value
 		return (value);
 	}
@@ -82,28 +82,30 @@ struct is_trivially_destructible
 template< class T > struct remove_reference { typedef T type; };
 template< class T > struct remove_reference<T&> { typedef T type; };
 template< class T > struct remove_reference<T&&> { typedef T type; };
-template< class T >
-
 //std::move
-constexpr typename std::remove_reference<T>::type&& move(T&& t);
+template< class T >
+constexpr typename std::remove_reference<T>::type&& move(T&& t)
+{
+	return static_cast<typename std::remove_reference<T>::type&&>(t); 
+}
 
 //forward
 template<class _Ty> inline
 constexpr _Ty&& forward(
-	typename remove_reference<_Ty>::type& _Arg) _NOEXCEPT
+	typename remove_reference<_Ty>::type& _Arg) 
 {	// forward an lvalue as either an lvalue or an rvalue
 	return (static_cast<_Ty&&>(_Arg));
 }
 
 template<class _Ty> inline
 constexpr _Ty&& forward(
-	typename remove_reference<_Ty>::type&& _Arg) _NOEXCEPT
+	typename remove_reference<_Ty>::type&& _Arg)
 {	// forward an rvalue as an rvalue
 	static_assert(!is_lvalue_reference<_Ty>::value, "bad forward call");
 	return (static_cast<_Ty&&>(_Arg));
 }
 
-
+}
 
 #else
 #include <type_traits>

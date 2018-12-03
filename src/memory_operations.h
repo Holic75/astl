@@ -4,8 +4,14 @@
 #if defined(ARDUINO)
 #include <Arduino.h>
 typedef uint16_t size_t;
-void *operator new(size_t size, void *ptr);
-void operator delete(void *obj, void *alloc);
+inline void *operator new(size_t size, void *ptr)
+{
+	return ptr;
+}
+inline void operator delete(void *obj, void *alloc)
+{
+	return;
+}
 #else
 #include <cstdint>
 #include <new>
@@ -89,25 +95,9 @@ void memmove(T* dest, const T* src, size_t len)
 template<class T, class X>
 void memcopy(T* dest, const X* src, size_t len)
 {   
-	if (src == dest)
+	for (size_t i = 0; i < len; i++)
 	{
-		return;
-	}
-	if (src >= dest)
-	{
-		for (size_t i = 0; i < len; i++)
-		{
-			dest[i] = src[i];
-		}
-	}
-	else
-	{
-		T* dest1 = dest - 1;
-		const T* src1 = src - 1;
-		for (size_t i = len; i > 0; i--)
-		{
-			dest1[i] = src1[i];
-		}
+		dest[i] = src[i];
 	}
 }
 
@@ -115,27 +105,10 @@ void memcopy(T* dest, const X* src, size_t len)
 template<class T, class X>
 void memmove(T* dest, const X* src, size_t len)
 {
-	if (src == dest)
+	for (size_t i = 0; i < len; i++)
 	{
-		return;
-	}
-	if (src >= dest)
-	{
-		for (size_t i = 0; i < len; i++)
-		{
-			dest[i] = src[i];
-			src[i].~T();
-		}
-	}
-	else
-	{
-		T* dest1 = dest - 1;
-		const T* src1 = src - 1;
-		for (size_t i = len; i > 0; i--)
-		{
-			dest1[i] = src1[i];
-			src[i].~T();
-		}
+		dest[i] = src[i];
+		src[i].~T();
 	}
 }
 

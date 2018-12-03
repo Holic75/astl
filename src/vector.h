@@ -37,6 +37,7 @@ class Vector
 		
 		allocator_.deallocate(data_, capacity_);
 		capacity_ = new_capacity;
+        data_ = new_data;
 		return true;
 	}
 
@@ -59,6 +60,7 @@ public:
 		memmove(new_data, data_, size_);
 		allocator_.deallocate(data_, capacity_);
 		capacity_ = new_capacity;
+        data_ = new_data;
 		return true;
 	}
 
@@ -121,7 +123,7 @@ public:
 		{
 			return false;
 		}
-		memcopy(data_, buffer, size_ * sizeof(T));
+		memcopy(data_, buffer, size_);
 		return true;
 	}
 
@@ -184,7 +186,7 @@ public:
     template <class X, class Allocator2, AllocationPolicyFunc allocPolicy2>
     bool insert(size_t pos, const Vector<X, Allocator2, allocPolicy2>& x)
     {
-		if (!reserveShift(allocPolicy(size_ + x.size()), pos, pos + 1))
+		if (!reserveShift(size_ + x.size(), pos, pos + x.size()))
 		{
 			return false;
 		}
@@ -211,11 +213,12 @@ public:
 		}
 
 		size_t n_elts_to_erase = end - start;
-		memmove(data_ + start, data_ + end, size_ - n_elts_to_erase);
+        size_t n_elts_to_move = size_ - end;
+		memmove(data_ + start, data_ + end, n_elts_to_move);
 		size_ -= n_elts_to_erase;
-		if (end > n_elts_to_erase)
+		if (n_elts_to_erase > n_elts_to_move)
 		{
-			memclear(data_ + size_, end - n_elts_to_erase);
+			memclear(data_ + size_, n_elts_to_erase - n_elts_to_move);
 		}
 		return true;
 	}
@@ -251,6 +254,13 @@ public:
     }
 
 
+    template <class X, class Allocator2, AllocationPolicyFunc allocPolicy2 >
+    bool pushFront(const Vector<X, Allocator2, allocPolicy2>& x)
+    {
+        return insert(0, x);
+    }
+
+
     bool popFront() 
     {
         return erase(0);
@@ -280,6 +290,7 @@ public:
 		memmove(new_data, data_, size_);
 		allocator_.deallocate(data_, capacity_);
 		capacity_ = size_;
+		data_ = new_data;
 		return true;
 	}
 
@@ -302,7 +313,7 @@ public:
     Vector(size_t len, Args&&... args)
         :Vector()
     {
-		resize(len, std::forward<Args>(args));
+		resize(len, std::forward<Args>(args)...);
     }
     
     
@@ -312,11 +323,34 @@ public:
 		resize(len);
 	}
 
-    Vector(const Vector<T,Allocator, allocPolicy>& x)
+    Vector(const Vector& x)
         :Vector()
+    {
+        copyFromBuffer(x.data(), x.size());
+    }
+    
+    
+     Vector(Vector&& x)
+        :Vector()
+    {
+         if(x.allocator_.is_movable)
         {
-			copyFromBuffer(x.data(), x.size());
+            data_ = x.data_;
+            size_ = x.size_;
+            capacity_ = x.capacity_;
+            
+            x.data_ = nullptr;
+            x.size_ = 0;
+            x.capacity_ = 0;
         }
+        else
+        {
+            copyFromBuffer(x.data(), x.size());
+            x.clear();
+            x.shrinkToFit();
+        }
+        copyFromBuffer(x.data(), x.size());
+    }
 
     template<class X, class Allocator2, AllocationPolicyFunc allocPolicy2>
     Vector(const Vector<X, Allocator2, allocPolicy2>& x)
@@ -333,21 +367,46 @@ public:
 	}
 
 
-    Vector& operator=(const Vector<T, Allocator, allocPolicy>& x)
+    Vector& operator=(const Vector& x)
     {
         if (this != &x)
         {
             clear();
-            shrinkToFit();
 			copyFromBuffer(x.data(), x.size());
         }
 		return *this;
     }
+    
+    
+    Vector& operator=(Vector&& x)
+    {
+        if (this != &x)
+        {
+            if(x.allocator_.is_movable)
+            {
+                data_ = x.data_;
+                size_ = x.size_;
+                capacity_ = x.capacity_;
+                
+                x.data_ = nullptr;
+                x.size_ = 0;
+                x.capacity_ = 0;
+            }
+            else
+            {
+                clear();
+                copyFromBuffer(x.data(), x.size());
+                x.clear();
+                x.shrinkToFit();
+            }
+        }
+		return *this;
+    }
+    
 
 	Vector& operator=(std::initializer_list<T> l)
 	{
         clear();
-        shrinkToFit();
 		copyFromBuffer(l.begin(), l.size());		
 		return *this;
 	}
@@ -356,7 +415,6 @@ public:
     Vector& operator=(const Vector<X, Allocator2, allocPolicy2>& x)
     {
         clear();
-        shrinkToFit();
 		copyFromBuffer(x.data(), x.size());
 		return *this;
     }

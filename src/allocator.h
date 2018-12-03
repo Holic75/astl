@@ -13,7 +13,8 @@ namespace astl
         uint8_t data_[N*sizeof(T)];
 
     public:
-
+        
+        static const bool is_movable = false;
         constexpr size_t maxSize() const {return N;};
         T* allocate(size_t n)
         {
@@ -37,6 +38,39 @@ namespace astl
         FixedSizeAllocator() {};
 
     };
+
+
+template <class T>
+class HeapAllocator
+{
+
+public:
+    static const bool is_movable = true;
+    constexpr size_t maxSize() const {return 32768/sizeof(T);};
+    T* allocate(size_t n)
+    {
+        if (n == 0)
+        {
+            return nullptr;
+        }
+        void* ptr = new uint8_t[n *sizeof(T)];
+        T* typed_ptr = static_cast<T*>(ptr);
+
+        return typed_ptr;
+    }
+
+    bool deallocate(T* ptr, size_t n)
+    {
+        if (n != 0)
+        {
+            delete ptr;               
+        }
+
+        return true;
+    }
+
+    HeapAllocator() {};
+};
 
 
 typedef size_t(*AllocationPolicyFunc)(size_t);
@@ -67,37 +101,6 @@ inline size_t allocationPolicyFixed(size_t n)
 	return n;
 }
 
-template <class T>
-class HeapAllocator
-{
-
-public:
-
-    constexpr size_t maxSize() const {return 32768/sizeof(T);};
-    T* allocate(size_t n)
-    {
-        if (n == 0)
-        {
-            return nullptr;
-        }
-        void* ptr = new uint8_t[n *sizeof(T)];
-        T* typed_ptr = static_cast<T*>(ptr);
-
-        return typed_ptr;
-    }
-
-    bool deallocate(T* ptr, size_t n)
-    {
-        if (n != 0)
-        {
-            delete ptr;               
-        }
-
-        return true;
-    }
-
-    HeapAllocator() {};
-};
 
 }
 
