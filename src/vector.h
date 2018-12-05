@@ -384,6 +384,7 @@ public:
         {
             if(x.allocator_.is_movable)
             {
+			    allocator_.deallocate(data_, capacity_);
                 data_ = x.data_;
                 size_ = x.size_;
                 capacity_ = x.capacity_;
@@ -418,6 +419,34 @@ public:
 		copyFromBuffer(x.data(), x.size());
 		return *this;
     }
+
+
+	template<class X, class Allocator2, AllocationPolicyFunc allocPolicy2>
+    bool operator==(const Vector<X, Allocator2, allocPolicy2>& x)
+    {
+		if (size_!= x.size())
+		{
+			return false;
+		}
+
+		auto x_data = x.data();
+		for (size_t i = 0; i < size_; i++)
+		{
+			if (data_[i] != x_data[i])
+			{
+				return false;
+			}
+		}
+		return true;
+    }
+
+
+	template<class X, class Allocator2, AllocationPolicyFunc allocPolicy2>
+    bool operator!=(const Vector<X, Allocator2, allocPolicy2>& x)
+	{
+		return !((*this)==x);
+	}
+	
 
     typedef T* iterator;
     typedef const T* const_iterator;
