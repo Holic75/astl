@@ -186,6 +186,11 @@ public:
     template <class X, class Allocator2, AllocationPolicyFunc allocPolicy2>
     bool insert(size_t pos, const Vector<X, Allocator2, allocPolicy2>& x)
     {
+		if (this == &x)
+		{
+			auto y = x;
+			insert(pos, y);
+		}
 		if (!reserveShift(size_ + x.size(), pos, pos + x.size()))
 		{
 			return false;
