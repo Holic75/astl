@@ -3,6 +3,8 @@
 
 #include "arena.h"
 #include "initializer_list.h"
+#include "type_traits.h"
+
 namespace astl
 {
     
@@ -12,38 +14,36 @@ template <class T>
 class ListNode
 {
 private:
-    Node* prev;
-    Node* next;
+    ListNode* prev;
+    ListNode* next;
 public:
      T   value;
 
-    Node(Node* prv, Node* nxt, const T& val)
+   ListNode(ListNode* prv, ListNode* nxt, const T& val)
         : value(val), prev(prev), next(nxt){};
-    Node(const T& val)
+    ListNode(const T& val)
         :value(val), prev(nullptr), next(nullptr){};
-    Node()
+    ListNode()
         :prev(nullptr), next(nullptr){};
 template<class ...Args>
-    Node(Node* prv, Node* nxt, Args... args)
+    ListNode(ListNode* prv, ListNode* nxt, Args... args)
         : value(args), prev(prev), next(nxt){};
         
-    friend template<class, class> List;    
+   template<class, class>  friend  class List;
 
 };
 
-template <class T>
-class ConstListNodeIterator;
-template <class T>
-class ListNodeIterator;
+template <class T> class ConstListNodeIterator;
+template <class T> class ListNodeIterator;
 
-bool operator==(const ListNodeIterator& a, const ListNodeIterator& b) { return a.node_ == b.node_; };
-bool operator==(const ListNodeIterator& a, const ConstListNodeIterator& b) { return a.node_ == b.node_; };
-bool operator==(const ConstListNodeIterator& a, const ListNodeIterator& b) { return a.node_ == b.node_; };
-bool operator==(const ConstListNodeIterator& a, const ConstListNodeIterator& b) { return a.node_ == b.node_; };
-bool operator!=(const ConstListNodeIterator& a, const ListNodeIterator& b) { return a.node_ != b.node_; };
-bool operator!=(const ListNodeIterator& a, const ConstListNodeIterator& b) { return a.node_ != b.node_; };;
-bool operator!=(const ConstListNodeIterator& a, const ConstListNodeIterator& b) { return a.node_ != b.node_; };;
-bool operator!=(const ListNodeIterator& a, const ListNodeIterator& b) { return a.node_ != b.node_; };;
+template<class T> bool operator==(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator==(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };
+template<class T> bool operator!=(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };;
+template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };;
+template<class T> bool operator!=(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };;
 
 template <class T>
 class ListNodeIterator
@@ -95,9 +95,10 @@ public:
    friend bool operator!=(const ListNodeIterator& a, const ListNodeIterator& b);
 
    ListNodeIterator(const ListNodeIterator& node) = default;
-   ListNodeIterator(const ListNodeIterator& node)
+   ListNodeIterator()
     :node_(nullptr) {};
-   friend template<class, class> List;    
+
+   template<class, class> friend class List;    
 private:
    ListNodeIterator(ListNode<T>* node)
       :node_(node){};
@@ -154,7 +155,7 @@ public:
    ConstListNodeIterator(const ConstListNodeIterator& node) = default;
    ConstListNodeIterator(const ListNodeIterator& node)
     :node_(nullptr) {};
-   friend template<class, class> List;    
+   template<class, class> friend class List;    
 private:
    ConstListNodeIterator(const ListNode<T>* node)
       :node_(node){};
@@ -166,17 +167,25 @@ template <class T, class Arena>
 class List
 {
     Arena arena_;
-    Node<T>* head_;
-    Node<T>* end_;
+    ListNode<T>* head_;
+    ListNode<T>* end_;
     size_t size_;
+
+	void initialize()
+	{
+		end_ = arena_.create();
+		head_ = arena_.create();
+		head_->next = end_;
+		end_->prev = head_;
+		size_ = 0;
+	}
     
 public:
     
     List()
         :arena(), size_(0)
     {
-        end_ = arena_.create();
-        head_ = arena_.create();
+		initialize();
     }
 
     typedef ListNodeIterator iterator;
@@ -189,10 +198,10 @@ public:
     
     
     template<class ...Args>
-    iterator emplace(const_iterator it, Args... args)
+    iterator emplace(const_iterator it, Args&&... args)
     {
 
-        Node<T*> new_node = arena_.create(it.node_->prev , it.node_, args);
+        Node<T*> new_node = arena_.create(it.node_->prev , it.node_, std::forward<Args>(args)...);
         if (new_node == nullptr)
         {
             return end_;
@@ -219,9 +228,9 @@ public:
     
     
     template<class ...Args>
-    iterator emplaceBack(Args... args)
+    iterator emplaceBack(Args&&... args)
     {        
-        return emplace(end_, args);
+        return emplace(end_, std::forward<Args>(args)...);
     }
     
     iterator pushBack(const T& val)
@@ -230,9 +239,9 @@ public:
     }
     
     template<class ...Args>
-    iterator emplaceFront(Args... args)
+    iterator emplaceFront(Args&&... args)
     {        
-        return emplace(head_->next, args);
+        return emplace(head_->next, std::forward<Args>(args)...);
     }
     
     iterator pushFront(const T& val)
@@ -267,6 +276,7 @@ public:
     
     void clear()
     {
+
         auto node_ptr = head_->next;
         while(node_ptr != end_)
         {
@@ -279,7 +289,7 @@ public:
     }
     
       
-    List(const List<T, Arena>& l)
+    List(const List& l)
         :List()
     {
         insert(end_, l);
@@ -291,6 +301,24 @@ public:
     {
         insert(end_, l);
     }
+
+
+	List(List&& l)
+	{
+		if (arena_.is_movable)
+		{
+			head_ = l.head_;
+			end_ = l.end_;
+			size_ = l.size_;
+			l.initialize();
+		}
+		else
+		{
+			initialize();
+			*this = l;
+			l.clear();
+		}
+	}
     
     
       
@@ -303,8 +331,8 @@ public:
         }
     }
     
-    List& operator=(const List<T, Arena2>& l)
-        :List()
+
+    List& operator=(const List& l)
     {
         if (this != l)
         {
@@ -313,6 +341,34 @@ public:
         }
         return this;
     }
+
+
+	List& operator=(List&& l)
+	{
+		if (this == l)
+		{
+			return this;
+		}
+
+		if (arena_.is_movable)
+		{
+			head_ = l.head_;
+			end_ = l.end_;
+			size_ = l.size_;
+			l.initialize();
+		}
+
+		if (this != l)
+		{
+			clear();
+			insert(end_, l);
+			l.clear();
+		}
+		return this;
+	}
+
+
+
     
     template<class X, class Arena2>
     List& operator=(const List<X, Arena2>& l)
@@ -322,6 +378,16 @@ public:
         insert(end_, l);
         return this;
     }
+
+
+	List& operator=(std::initializer_list<T> l)
+	{
+		clear();
+		for (auto it = l.begin(); it != l.end(); it++)
+		{
+			pushBack(*it);
+		}
+	}
     
     
     ~List()

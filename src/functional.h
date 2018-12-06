@@ -1,6 +1,7 @@
 #ifndef ASTL_FUNCTIONAL_H
 #define ASTL_FUNCTIONAL_H
 
+#include <type_traits.h>
 
 namespace astl
 {
@@ -32,7 +33,7 @@ public:
     Callable() {};
     Callable(F f)
         :f_(f) {};
-    virtual R operator()(Args... args) override { return f_(args...);};
+    virtual R operator()(Args&&... args) override { return f_(std::forward<Args>(args)...);};
     virtual CallableBase<R(Args...)>* getCopy() override {return new Callable(f_);};
 };
 
@@ -65,7 +66,7 @@ public:
     Function(F f)
         :f_(new aux::Callable<F, R(Args...)>(f)){};
 
-    R operator()(Args... args) { return f_->operator()(args...);};
+    R operator()(Args&&... args) { return f_->operator()(std::forward<Args>(args)...);};
     
 
     ~Function() 
