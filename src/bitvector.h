@@ -141,12 +141,12 @@ public:
         return BitReference(b.byte_ref_, b.bit_id_);
     }
 
-    friend bool operator==(const BitVectorIterator& a, const BitVectorIterator& b);
-    friend bool operator!=(const BitVectorIterator& a, const BitVectorIterator& b);
-    friend bool operator==(const BitVectorIterator& a, const ConstBitVectorIterator& b);  
-    friend bool operator==(const ConstBitVectorIterator& a, const BitVectorIterator& b);
-    friend bool operator!=(const BitVectorIterator& a, const ConstBitVectorIterator& b);  
-    friend bool operator!=(const ConstBitVectorIterator& a, const BitVectorIterator& b);    
+	bool operator==(const BitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator==(const ConstBitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ & || bit_id_ != b.bit_id_; };
+	bool operator!=(const ConstBitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
+
+	template<class>  friend class ConstBitVectorIterator;
 };
 
 template<class T> 
@@ -205,23 +205,21 @@ public:
     {
         return ConstBitReference(b.byte_ref_, b.bit_id_);
     }
-    friend bool operator==(const ConstBitVectorIterator& a, const ConstBitVectorIterator& b);
-    friend bool operator!=(const ConstBitVectorIterator& a, const ConstBitVectorIterator& b);
-    friend bool operator==(const BitVectorIterator& a, const ConstBitVectorIterator& b);  
-    friend bool operator==(const ConstBitVectorIterator& a, const BitVectorIterator& b);
-    friend bool operator!=(const BitVectorIterator& a, const ConstBitVectorIterator& b);  
-    friend bool operator!=(const ConstBitVectorIterator& a, const BitVectorIterator& b);       
+
+
+	ConstBitVectorIterator(const BitVectorIterator& b)
+		:byte_ref_(b.byte_ref_), bit_id_(b.bit_id_) {};
+
+	bool operator==(const BitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator==(const ConstBitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ &|| bit_id_ != b.bit_id_; };
+	bool operator!=(const ConstBitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
+
+	template<class>  friend class BitVectorIterator;
 };
 
 
-template<class T> bool operator==(const BitVectorIterator<T>& a, const BitVectorIterator<T>& b) { return a.byte_ref_ == b.byte_ref_ && a.bit_id_ == b.bit_id_; };
-template<class T> bool operator==(const BitVectorIterator<T>& a, const ConstBitVectorIterator<T>& b) { return a.byte_ref_ == b.byte_ref_ && a.bit_id_ == b.bit_id_; };
-template<class T> bool operator==(const ConstBitVectorIterator<T>& a, const BitVectorIterator<T>& b) { return a.byte_ref_ == b.byte_ref_ && a.bit_id_ == b.bit_id_; };
-template<class T> bool operator==(const ConstBitVectorIterator<T>& a, const ConstBitVectorIterator<T>& b) { return a.byte_ref_ == b.byte_ref_ && a.bit_id_ == b.bit_id_; };
-template<class T> bool operator!=(const ConstBitVectorIterator<T>& a, const BitVectorIterator<T>& b) { return a.byte_ref_ != b.byte_ref_ || a.bit_id_ != b.bit_id_; };
-template<class T> bool operator!=(const BitVectorIterator<T>& a, const ConstBitVectorIterator<T>& b) { return a.byte_ref_ != b.byte_ref_ || a.bit_id_ != b.bit_id_; };
-template<class T> bool operator!=(const ConstBitVectorIterator<T>& a, const ConstBitVectorIterator<T>& b) { return a.byte_ref_ != b.byte_ref_ || a.bit_id_ != b.bit_id_; };
-template<class T> bool operator!=(const BitVectorIterator<T>& a, const BitVectorIterator<T>& b) { return a.byte_ref_ != b.byte_ref_ || a.bit_id_ != b.bit_id_; };
+
 
 
 template<class T, class Allocator, AllocationPolicyFunc allocPolicy> 

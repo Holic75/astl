@@ -15,7 +15,7 @@ namespace astl
 		static const bool is_movable = false;
 
 		StaticArena()
-			:available_slots_(N) {};
+			:available_slots_(N, 1) {};
 
 		template <class ...Args>
 		T* create(Args&&... args)
@@ -53,17 +53,17 @@ namespace astl
 	public:
 		static const bool is_movable = true;
 
-		HeapArena();
+		HeapArena() {};
 
 		template <class ...Args>
 		T* create(Args&&... args)
 		{
-			return new T(std::forward<Atgs>(args)...);
+			return new T(std::forward<Args>(args)...);
 		}
 
 		bool destroy(T* ptr)
 		{
-			delete T;
+			delete ptr;
 			return true;
 		}
 	};

@@ -9,7 +9,11 @@ namespace astl
 {
     
 template <class T> class ListNode;
+template <class T> class ConstListNodeIterator;
+template <class T> class ListNodeIterator;
 template<class T, class Arena = HeapArena<ListNode<T>>> class List;
+
+
 template <class T>
 class ListNode
 {
@@ -20,30 +24,20 @@ public:
      T   value;
 
    ListNode(ListNode* prv, ListNode* nxt, const T& val)
-        : value(val), prev(prev), next(nxt){};
+        : value(val), prev(prv), next(nxt){};
     ListNode(const T& val)
         :value(val), prev(nullptr), next(nullptr){};
     ListNode()
         :prev(nullptr), next(nullptr){};
 template<class ...Args>
     ListNode(ListNode* prv, ListNode* nxt, Args... args)
-        : value(args), prev(prev), next(nxt){};
+        : value(std::forward<Args>(args)...), prev(prev), next(nxt){};
         
    template<class, class>  friend  class List;
-
+   template<class>  friend  class ListNodeIterator;
+   template<class>  friend  class ConstListNodeIterator;
 };
 
-template <class T> class ConstListNodeIterator;
-template <class T> class ListNodeIterator;
-
-template<class T> bool operator==(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator==(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };
-template<class T> bool operator!=(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };;
-template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };;
-template<class T> bool operator!=(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };;
 
 template <class T>
 class ListNodeIterator
@@ -63,20 +57,20 @@ public:
    
    ListNodeIterator& operator++ ()
    {
-       node_ = (node_ == nullptr || node_->prev) ? nullptr : node_->next;
+       node_ = (node_ == nullptr) ? nullptr : node_->next;
        return *this;
    }
    
    ListNodeIterator operator++ (int)
    {
-       NodeIterator old = *this;
+       ListNodeIterator old = *this;
        ++(*this);
        return old;
    }
    
    ListNodeIterator& operator-- ()
    {
-       node_ = (node_ == nullptr || node_->prev) == nullptr ? nullptr : node_->prev;
+       node_ = (node_ == nullptr) == nullptr ? nullptr : node_->prev;
        return *this;
    }
    
@@ -87,18 +81,17 @@ public:
        return old;
    }
    
-   friend bool operator==(const ListNodeIterator& a, const ListNodeIterator& b);
-   friend bool operator==(const ListNodeIterator& a, const ConstListNodeIterator& b);
-   friend bool operator==(const ConstListNodeIterator& a, const ListNodeIterator& b);
-   friend bool operator!=(const ConstListNodeIterator& a, const ListNodeIterator& b);
-   friend bool operator!=(const ListNodeIterator& a, const ConstListNodeIterator& b);
-   friend bool operator!=(const ListNodeIterator& a, const ListNodeIterator& b);
+   bool operator==(const ListNodeIterator<T>& b) { return node_ == b.node_; };
+   bool operator!=(const ListNodeIterator<T>& b) { return node_ != b.node_; };
+   bool operator==(const ConstListNodeIterator<T>& b) { return node_ == b.node_; };
+   bool operator!=(const ConstListNodeIterator<T>& b) { return node_ != b.node_; };
 
    ListNodeIterator(const ListNodeIterator& node) = default;
    ListNodeIterator()
     :node_(nullptr) {};
 
    template<class, class> friend class List;    
+   template<class> friend class ConstListNodeIterator;
 private:
    ListNodeIterator(ListNode<T>* node)
       :node_(node){};
@@ -110,7 +103,7 @@ private:
 template <class T>
 class ConstListNodeIterator
 {
-   const ListNode<T>* node_; 
+   ListNode<T>* node_; 
 public:
    const T*  operator->() {return &(node_->value);};
    friend const T& operator *(const ConstListNodeIterator &it)
@@ -121,7 +114,7 @@ public:
    
    ConstListNodeIterator& operator++ ()
    {
-       node_ = (node_ == nullptr || node_->prev) ? nullptr : node_->next;
+       node_ = (node_ == nullptr) ? nullptr : node_->next;
        return *this;
    }
    
@@ -134,7 +127,7 @@ public:
    
    ConstListNodeIterator& operator-- ()
    {
-       node_ = (node_ == nullptr || node_->prev) == nullptr ? nullptr : node_->prev;
+       node_ = (node_ == nullptr) == nullptr ? nullptr : node_->prev;
        return *this;
    }
    
@@ -145,23 +138,37 @@ public:
        return old;
    }
    
-   friend bool operator==(const ConstListNodeIterator& a, const ConstListNodeIterator& b);
-   friend bool operator==(const ListNodeIterator& a, const ConstListNodeIterator& b);
-   friend bool operator==(const ConstListNodeIterator& a, const ListNodeIterator& b);
-   friend bool operator!=(const ConstListNodeIterator& a, const ListNodeIterator& b);
-   friend bool operator!=(const ListNodeIterator& a, const ConstListNodeIterator& b);
-   friend bool operator!=(const ConstListNodeIterator& a, const ConstListNodeIterator& b);
+
+   bool operator==(const ListNodeIterator<T>& b) { return node_ == b.node_; };
+   bool operator!=(const ListNodeIterator<T>& b) { return node_ != b.node_; };
+   bool operator==(const ConstListNodeIterator<T>& b) { return node_ == b.node_; };
+   bool operator!=(const ConstListNodeIterator<T>& b) { return node_ != b.node_; };
+
 
    ConstListNodeIterator(const ConstListNodeIterator& node) = default;
-   ConstListNodeIterator(const ListNodeIterator& node)
+
+   ConstListNodeIterator(const ListNodeIterator<T>& node)
+	   :node(node.node_) {};
+
+   ConstListNodeIterator()
     :node_(nullptr) {};
    template<class, class> friend class List;    
+   template<class> friend class ListNodeIterator;
 private:
-   ConstListNodeIterator(const ListNode<T>* node)
+   ConstListNodeIterator(ListNode<T>* node)
       :node_(node){};
       
 };
 
+
+template<class T> bool operator==(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator==(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
+template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };
+template<class T> bool operator!=(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };
+template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };
+template<class T> bool operator!=(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };
 
 template <class T, class Arena>
 class List
@@ -183,13 +190,13 @@ class List
 public:
     
     List()
-        :arena(), size_(0)
+        :arena_(), size_(0)
     {
 		initialize();
     }
 
-    typedef ListNodeIterator iterator;
-    typedef ConstListNodeIterator const_iterator;
+    typedef ListNodeIterator<T> iterator;
+    typedef ConstListNodeIterator<T> const_iterator;
     
     iterator begin() {return head_->next;};
     iterator end() {return end_;};
@@ -201,13 +208,13 @@ public:
     iterator emplace(const_iterator it, Args&&... args)
     {
 
-        Node<T*> new_node = arena_.create(it.node_->prev , it.node_, std::forward<Args>(args)...);
+        ListNode<T>* new_node = arena_.create(it.node_->prev , it.node_, std::forward<Args>(args)...);
         if (new_node == nullptr)
         {
             return end_;
         }
-        new_node_->prev->next = new_node;
-        new_node_->next->prev = new_node;
+        new_node->prev->next = new_node;
+        new_node->next->prev = new_node;
         size_++;
     }
     
@@ -235,7 +242,7 @@ public:
     
     iterator pushBack(const T& val)
     {
-        return emplaceBack(it, val);
+        return emplaceBack(val);
     }
     
     template<class ...Args>
@@ -284,7 +291,7 @@ public:
             arena_.destroy(node_ptr->prev);
         }       
         head_->next = end_;
-        end_->prev = next;
+        end_->prev = head_;
         size_ = 0;
     }
     
