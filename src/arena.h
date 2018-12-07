@@ -40,7 +40,7 @@ namespace astl
 				return false;
 			}
 
-			delete ptr;
+			ptr->~T();
 			available_slots_[(byte_ptr - &data_[0]) / sizeof(T)] = true;
 			return true;
 		}

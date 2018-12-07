@@ -1,32 +1,34 @@
-#ifndef ASTL_UNORDERED_MAP_H
-#define ASTL_UNORDERED_MAP_H
+#ifndef ASTL_UNORDERED_SET_H
+#define ASTL_UNORDERED_SET_H
 
 #include "list.h"
 #include "vector.h"
 #include "pair.h"
 #include "hash.h"
 
+
 namespace astl 
 {
-    
+
 namespace aux
 {
-template<class Key, class T, class Arena>
-struct UnorderedMapBucket
+template<class Key, class Arena>
+struct UnorderedSetBucket
 {
-	typename List<Pair<const Key, T>, Arena>::iterator it;
+	typename List<const Key, Arena>::iterator it;
 	size_t count;
 };
 }
 
 
-template<class Key, class T, class Arena = HeapArena<ListNode<Pair<const Key,T>>>, 
-          class Allocator = HeapAllocator<typename aux::UnorderedMapBucket<Key, T, Arena>>>
-class UnorderedMap
+template<class Key, class Arena = HeapArena<ListNode<const Key>>, 
+          class Allocator = HeapAllocator<typename UnorderedSetBucket<Key, Arena>>>
+class UnorderedSet
 {
-    List<Pair<const Key, T>, Arena> data_;
-    Vector<typename aux::UnorderedMapBucket<Key, T, Arena>, Allocator, allocationPolicyFixed> bins_;//keeps first iterator of next bin
+    List<const Key, Arena> data_;
+    Vector<typename UnorderedSetBucket<Key, Arena>, Allocator, allocationPolicyFixed> bins_;//keeps first iterator of next bin
     float max_load_factor_ = 0.75;
+    
     static const size_t MIN_HASH_BINS_ = 10;
     
     size_t getBin(const Key& key)
@@ -36,24 +38,24 @@ class UnorderedMap
     
     
 public:
-    typedef typename List<Pair<const Key, T>, Arena>::iterator iterator;
-    typedef typename List<Pair<const Key, T>, Arena>::const_iterator const_iterator;
+    typedef typename List<const Key, Arena>::iterator iterator;
+    typedef typename List<const Key, Arena>::const_iterator const_iterator;
     
     size_t size() {return data_.size();};
     size_t numBins() { return bins_.size() - 1;};
 	size_t binCount(size_t bin_id) const { return bins_[bin_id].count; };
 
-    UnorderedMap(size_t min_hash_bins = MIN_HASH_BINS_)
+    UnorderedMap(size_t min_hash_bins = 10)
         :bins_(min_hash_bins + 1)
     {
         for (size_t i =0; i<bins_.size();i++)
         {
             bins_[i].it = data_.end();
-			bins_[i].count = 0;
+            bins_[i].count = 0;
         }
     };
     
-    
+     
     iterator find(const Key& key)
     {
         size_t bin = getBin(key); 
@@ -66,15 +68,15 @@ public:
       
         for (auto it = bins_[bin].it; it != bins_[bin+1].it; it++)
         {
-            if (it->first == key)
+            if (*it == key)
             {
                 return it;
             }     
         }     
         return data_.end();           
-    }
+    }     
     
-    
+     
     const_iterator find(const Key& key) const
     {
         size_t bin = getBin(key); 
@@ -85,9 +87,9 @@ public:
         }
         
       
-        for (auto it = bins_[bin]; it != bins_[bin+1]; it++)
+        for (auto it = bins_[bin].it; it != bins_[bin+1].it; it++)
         {
-            if (it->key == key)
+            if (*it == key)
             {
                 return it;
             }     
@@ -96,47 +98,37 @@ public:
     }
         
         
-    template <class ...Args>
-    iterator emplace(const Key& key, Args&&... args)
+    iterator insert(const Key& key)
     {
         auto it = find(key);
         if (it == data_.end())
         {
             size_t bin = getBin(key);
-			it = data_.emplace(bins_[bin].it, astl::Pair<const Key,T>(key, std::forward<Args>(args)... ));
+			it = data_.emplace(bins_[bin].it, key));
             if (it == end())
             {// failed to insert into the list
                 return it;
             }
-			bins_[bin].count++;
-            auto old_it = bins_[bin].it;
+            bins_[bin].count++;
+            auto old_it = bins_[bin];
             for (size_t i = bin + 1; i > 0; i--)
             {
-                if (bins_[i - 1].it == old_it)
+                if (bins_[i - 1] == old_it)
                 {
-                    bins_[i - 1].it = it;
+                    bins_[i - 1] = it;
                 }
                 else
                 {
                     break;
                 }
-            }
+            }      
             if (data_.size() > max_load_factor_*numBins())
             {
                 rehash(numBins()*2);
             }
         }
-        else
-        {
-            it->second = T(std::forward<Args>(args)...);
-        }
         
         return it;
-    }
-    
-    iterator insert(const Key& key, const T& value)
-    {
-        return emplace(key, value);
     }
     
 
@@ -144,17 +136,17 @@ public:
 	{
 		if (it != data_.end())
 		{
-			size_t bin = getBin(it->first);
+			size_t bin = getBin(*it);
 			auto old_it = it;
 			it = data_.erase(it);
-			bins_[bin].count--;
+            bins_[bin].count--;
 			if (bins_[bin].it == it)
-			{ //if it is first element update all corresponding bins		
+			{ //if it is first element update all corresponding bins
 				for (size_t i = bin + 1; i > 0; i--)
 				{
-					if (bins_[i - 1].it == old_it)
+					if (bins_[i - 1] == old_it)
 					{
-						bins_[i - 1].it = it;
+						bins_[i - 1] = it;
 					}
 					else
 					{
@@ -178,17 +170,9 @@ public:
     }
     
     
-    T& operator[] (const Key& key)
+    bool contains(const Key& key) const
     {
-        auto it = find(key);
-        if (it == data_.end())
-        {
-            return  emplace(key, T())->second;
-        }
-        else
-        {
-            return it->second;
-        }
+        return find(key) != data_.end();
     }
     
     
@@ -198,7 +182,6 @@ public:
         for (size_t i = 0; i < bins_.size(); i++)
         {
             bins_[i].it = data_.end();
-			bins_[i].count = 0;
         }
     }
     
@@ -210,43 +193,43 @@ public:
     const_iterator end() const {return data_.end();};
     
     
-    UnorderedMap(const UnorderedMap& m)
-        :UnorderedMap(m.numBins())
+    UnorderedSet(const UnorderedSet& m)
+        :UnorderedSet(m.numBins())
     {
         for (auto it = m.begin(); it != m.end(); it++)
         {
-            insert(it->first, it->second);
+            insert(*it);
         }
     };
     
-    template<class Key2, class T2, class Arena2, class Allocator2>
-    UnorderedMap(const UnorderedMap<Key2, T2, Arena2, Allocator2>& m)
-        :UnorderedMap(m.numBins())
+    template<class Key2,  class Arena2, class Allocator2>
+    UnorderedSet(const UnorderedSet<Key2, T2, Arena2, Allocator2>& m)
+        :UnorderedSet(m.numBins())
     {
         for (auto it = m.begin(); it != m.end(); it++)
         {
-            insert(it->first, it->second);
+            insert(*it);
         }
     };
     
-    UnorderedMap(std::initializer_list<Pair<const Key, T>> l)
-        :UnorderedMap()
+    UnorderedSet(std::initializer_list<const Key> l)
+        :UnorderedSet()
     {
         for (auto it = l.begin(); it != l.end(); it++)
         {
-            insert(it->first, it->second);
+            insert(*it);
         }
     };
     
    
-    UnorderedMap& operator=(const UnorderedMap& m)
+    UnorderedSet& operator=(const UnorderedSet& m)
     {
         if (this != &m)
         {
             clear();
             for (auto it = m.begin(); it != m.end(); it++)
             {
-                insert(it->first, it->second);
+                insert(*it);
             }
         }
         return *this;
@@ -254,7 +237,7 @@ public:
 
 
 
-	UnorderedMap& operator=(std::initializer_list<Pair<const Key, T>> l)
+	UnorderedSet& operator=(std::initializer_list<const Key> l)
 	{
 		clear();
 		for (auto it = l.begin(); it != l.end(); it++)
@@ -264,8 +247,8 @@ public:
 	};
     
     
-    template<class Key2, class T2, class Arena2, class Allocator2>
-    UnorderedMap& operator=(const UnorderedMap<Key2, T2, Allocator2, Arena2>& m)
+    template<class Key2,  class Arena2, class Allocator2>
+    UnorderedSet& operator=(const UnorderedSet<Key2, Allocator2, Arena2>& m)
     {
         clear();
         for (auto it = m.begin(); it != m.end(); it++)
@@ -274,9 +257,8 @@ public:
         }
         return *this;
     };
-
-
-
+    
+    
 	bool rehash(size_t bucket_count)
 	{
 		if (!bins_.resize(bucket_count + 1))
@@ -284,7 +266,7 @@ public:
 			return false;
 		}
 
-		List<astl::Pair<const Key, T>, Arena> l = std::move(data_);
+		List<const Key, Arena> l = std::move(data_);
 
 		for (int i = 0; i < bins_.size(); i++)
 		{
@@ -303,10 +285,10 @@ public:
             
 };
 
-template<class Key, class T, size_t N, size_t Bins>
-using StaticUnorderedMap = UnorderedMap < Key, T, StaticArena<ListNode<Pair<const Key, T>>, N + 2>,
-	FixedSizeAllocator<typename aux::UnorderedMapBucket<Key, T, StaticArena<ListNode<Pair<const Key, T>>, N + 2>>,
-							(Bins > 10 ? Bins : 10) + 1>>;
+template<class Key, size_t N, size_t Bins>
+using StaticUnorderedSet = UnorderedMap<Key, StaticArena<ListNode<const Key>, N + 2>, 
+                            FixedSizeAllocator<typename UnorderedSetBucket<Key, StaticArena<ListNode<const Key>, N + 2>> , 
+                            (Bins > 10 ? Bins : 10) + 1>>;
     
 }
 

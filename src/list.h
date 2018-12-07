@@ -189,6 +189,7 @@ class List
     
 public:
     
+	size_t size() const { return size_; };
     List()
         :arena_(), size_(0)
     {
@@ -325,8 +326,12 @@ public:
 		else
 		{
 			initialize();
-			*this = l;
-			l.clear();
+            auto it = l.begin();
+            while( it != l.end())
+            {
+                insert(end_, *it);
+                it = l.erase(it);
+            }          
 		}
 	}
     
@@ -366,13 +371,18 @@ public:
 			end_ = l.end_;
 			size_ = l.size_;
 			l.initialize();
+            return this;
 		}
 
 		if (this != l)
 		{
 			clear();
-			insert(end_, l);
-			l.clear();
+            auto it = l.begin();
+            while( it != l.end())
+            {
+                insert(end_, *it);
+                it = l.erase(it);
+            }
 		}
 		return this;
 	}

@@ -12,7 +12,8 @@ struct Pair
 	template<class U, class V>
     Pair(U&& x, V&& y)
         :first(std::forward<U>(x)), second(std::forward<V>(y)) {};
-    Pair(){};
+    Pair()
+		:first(), second(){};
 };
 
 template<class X, class Y>
