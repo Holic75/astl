@@ -2,35 +2,39 @@
 #define ASTL_UNORDERED_MAP_H
 
 #include "list.h"
+#include "vector.h"
 #include "pair.h"
 
 
 namespace astl 
 {
     
-typedef uint8_t hash_type;
+typedef size_t hash_type;
 
-template class<T>
+template <class T>
 hash_type hash(const T& t)
 {
-    hash_type* ptr =  reinterpret_cast<uint8_t* const>(&t);
+    const uint8_t* ptr =  reinterpret_cast<const uint8_t* >(&t);
     
-    hash_type hash = 0;
+    hash_type hash = 0x811c9dc5u;
     for (size_t i = 0; i < sizeof(T); i++)
     {
-        hash = hash ^ ptr[i];
+        hash = (hash ^ ptr[i]) * 0x01000193u;
     }
     
     return hash;
 }
 
-template<class Key, class T, class Allocator = HeapAllocator2<List<Pair<Key,T>>::iterator>, class Arena = HeapArena<ListNode<Pair<Key,T>>>, AllocationPolicyFunc allocPolicy = allocationPolicy2>
+
+template<class Key, class T, class Arena = HeapArena<ListNode<Pair<Key,T>>>, 
+          class Allocator = HeapAllocator< typename List<Pair<Key,T>, Arena>::iterator>, 
+          AllocationPolicyFunc allocPolicy = allocationPolicy2>
 class UnorderedMap
 {
     List<Pair<Key, T>, Arena> data_;
-    Vector<List<Pair<Key, T>, Arena>, Allocator, allocPolicy> bins_;//keeps first iterator of next bin
+    Vector<typename List<Pair<Key, T>, Arena>::iterator, Allocator, allocPolicy> bins_;//keeps first iterator of next bin
     
-    static const MIN_HASH_BINS_ = 10;
+    static const size_t MIN_HASH_BINS_ = 10;
     
     size_t getBin(const Key& key)
     {
@@ -39,13 +43,14 @@ class UnorderedMap
     
     
 public:
-    typedef List<Pair<Key, T>, Arena>::iterator iterator;
-    typedef List<Pair<Key, T>, Arena>::const_iterator const_iterator;
+    typedef typename List<Pair<Key, T>, Arena>::iterator iterator;
+    typedef typename List<Pair<Key, T>, Arena>::const_iterator const_iterator;
     
     size_t size() {return data_.size();};
-    
-    UnorderedMap()
-        :bins_(MIN_HASH_BINS_ + 1)
+    size_t numBins() { return bins_.size() - 1;};
+
+    UnorderedMap(size_t min_hash_bins = 10)
+        :bins_(min_hash_bins + 1)
     {
         for (size_t i =0; i<bins_.size();i++)
         {
@@ -66,7 +71,7 @@ public:
       
         for (auto it = bins_[bin]; it != bins_[bin+1]; it++)
         {
-            if (it->key == key)
+            if (it->first == key)
             {
                 return it;
             }     
@@ -97,13 +102,13 @@ public:
         
         
     template <class ...Args>
-    iterator emplace(const Key& key, Args... args)
+    iterator emplace(const Key& key, Args&&... args)
     {
         auto it = find(key);
         if (it == data_.end())
         {
             size_t bin = getBin(key);
-            it = data_.emplace(bins_[bin], args);  
+			it = data_.emplace(bins_[bin], astl::Pair<Key,T>(key, std::forward<Args>(args)... ));
             if (it == end())
             {// failed to insert into the list
                 return it;
@@ -123,7 +128,7 @@ public:
         }
         else
         {
-            it->value = T(args);
+            it->second = T(std::forward<Args>(args)...);
         }
         
         return it;
@@ -134,30 +139,39 @@ public:
         return emplace(key, value);
     }
     
+
+	iterator erase(iterator it)
+	{
+		if (it != data_.end())
+		{
+			size_t bin = getBin(it->first);
+			auto old_it = it;
+			it = data_.erase(it);
+			if (bins_[bin] == it)
+			{ //if it is first element update all corresponding bins
+				for (size_t i = bin + 1; i > 0; i--)
+				{
+					if (bins_[i - 1] == old_it)
+					{
+						bins_[i - 1] = it;
+					}
+					else
+					{
+						break;
+					}
+				}
+
+			}
+		}
+		return it;
+	}
     
     iterator remove(const Key& key)
     {
         auto it = find(key);
         if (it != data_.end())
         {
-            size_t bin = getBin(key);
-            auto old_it = it;
-            it = data_.erase(it);
-            if (bins_[bin] == it)
-            { //if it is first element update all corresponding bins
-                for (size_t i = bin + 1; i > 0; i--)
-                {
-                    if (bins_[i - 1] == old_it)
-                    {
-                        bins_[i - 1] = it;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }       
-            
-            }
+			it = erase(it);
         }
         return it;
     }
@@ -168,11 +182,11 @@ public:
         auto it = find(key);
         if (it == data_.end())
         {
-            return  emplace(key)->second;
+            return  emplace(key, T())->second;
         }
         else
         {
-            return it->second();
+            return it->second;
         }
     }
     
@@ -195,7 +209,7 @@ public:
     
     
     UnorderedMap(const UnorderedMap& m)
-        :UnorderedMap()
+        :UnorderedMap(m.numBins())
     {
         for (auto it = m.begin(); it != m.end(); it++)
         {
@@ -203,9 +217,9 @@ public:
         }
     };
     
-    template<class Key2, class T2, class Allocator2, class Arena2, AllocationPolicyFunc allocPolicy2>
-    UnorderedMap(const UnorderedMap<Key2, T2, Allocator2, Arena2, allocPolicy2>& m)
-        :UnorderedMap()
+    template<class Key2, class T2, class Arena2, class Allocator2, AllocationPolicyFunc allocPolicy2>
+    UnorderedMap(const UnorderedMap<Key2, T2, Arena2, Allocator2, allocPolicy2>& m)
+        :UnorderedMap(m.numBins())
     {
         for (auto it = m.begin(); it != m.end(); it++)
         {
@@ -218,13 +232,12 @@ public:
     {
         for (auto it = l.begin(); it != l.end(); it++)
         {
-            insert(l->first, l->second);
+            insert(it->first, it->second);
         }
     };
     
    
     UnorderedMap& operator=(const UnorderedMap& m)
-        :UnorderedMap()
     {
         if (this != &m)
         {
@@ -236,11 +249,21 @@ public:
         }
         return *this;
     };
+
+
+
+	UnorderedMap& operator=(std::initializer_list<Pair<Key, T>> l)
+	{
+		clear();
+		for (auto it = l.begin(); it != l.end(); it++)
+		{
+			insert(it->first, it->second);
+		}
+	};
     
     
-    template<class Key2, class T2, class Allocator2, class Arena2, AllocationPolicyFunc allocPolicy2>
+    template<class Key2, class T2, class Arena2, class Allocator2, AllocationPolicyFunc allocPolicy2>
     UnorderedMap& operator=(const UnorderedMap<Key2, T2, Allocator2, Arena2, allocPolicy2>& m)
-        :UnorderedMap()
     {
         clear();
         for (auto it = m.begin(); it != m.end(); it++)
@@ -250,12 +273,14 @@ public:
         return *this;
     };
             
+};
 
-template<class Key, class T, size_t N>
-using StaticUnorderedMap = UnorderedMap<Key, T, StaticAllocator<List<Pair<Key,T>>::iterator, N>, StaticArena<ListNode<Pair<Key,T>>, N>, allocationPolicyFixed>;
+template<class Key, class T, size_t N, size_t Bins>
+using StaticUnorderedMap = UnorderedMap<Key, T, StaticArena<ListNode<Pair<Key,T>>, N + 2>, 
+                            FixedSizeAllocator<typename StaticList<Pair<Key,T>, N>::iterator, Bins + 1>, 
+                            allocationPolicyFixed>;
     
 }
 
-}
 
 #endif

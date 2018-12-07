@@ -136,14 +136,14 @@ public:
     BitVectorIterator(T* byte_ref, size_t bit_id)
         :byte_ref_(byte_ref), bit_id_(bit_id) {};
     
-    friend BitReference operator *(const BitVectorIterator<T> &b)
+    friend BitReference<T> operator *(const BitVectorIterator &b)
     {
-        return BitReference(b.byte_ref_, b.bit_id_);
+        return BitReference<T>(b.byte_ref_, b.bit_id_);
     }
 
 	bool operator==(const BitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
 	bool operator==(const ConstBitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
-	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ & || bit_id_ != b.bit_id_; };
+	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
 	bool operator!=(const ConstBitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
 
 	template<class>  friend class ConstBitVectorIterator;
@@ -201,18 +201,18 @@ public:
     ConstBitVectorIterator(T* const byte_ref, T bit_id)
         :byte_ref_(byte_ref), bit_id_(bit_id) {};
     
-    friend ConstBitReference operator *(const ConstBitVectorIterator<T> &b)
+    friend ConstBitReference<T> operator *(const ConstBitVectorIterator<T> &b)
     {
-        return ConstBitReference(b.byte_ref_, b.bit_id_);
+        return ConstBitReference<T>(b.byte_ref_, b.bit_id_);
     }
 
 
-	ConstBitVectorIterator(const BitVectorIterator& b)
+	ConstBitVectorIterator(const BitVectorIterator<T>& b)
 		:byte_ref_(b.byte_ref_), bit_id_(b.bit_id_) {};
 
 	bool operator==(const BitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
 	bool operator==(const ConstBitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
-	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ &|| bit_id_ != b.bit_id_; };
+	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
 	bool operator!=(const ConstBitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
 
 	template<class>  friend class BitVectorIterator;
@@ -345,7 +345,7 @@ public:
         }
         
         T last_byte = data_.back();
-        for (size_t i = BitBlock<T>::BITS_IN_BLOCK*(size_in_bytes - 1); i < size_; i++)
+        for (size_t i = BitBlock<T>::BITS_IN_BLOCK*(size_bytes - 1); i < size_; i++)
         {
             if (!(last_byte & BitBlock<T>::UNIT_BLOCK))
             {
@@ -800,9 +800,9 @@ public:
         if (allocator_.is_movable)
         {
             data_ = x.data_;
-            size_ x.size_;
+            size_ = x.size_;
             capacity_ = x.capacity_;
-            x.size_ =0;
+            x.size_ = 0;
             x.capacity_ = 0;
             x.data_ = nullptr;
         }
@@ -915,7 +915,7 @@ public:
         }
 
         size_t num_bytes = getNumBytes(size_);
-        T* x_data x.data();
+        const T* x_data = x.data();
         for (size_t i = 0; i< num_bytes; i++)
         {
             if (data_[i]!=x_data[i])

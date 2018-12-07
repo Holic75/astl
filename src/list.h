@@ -76,7 +76,7 @@ public:
    
    ListNodeIterator operator-- (int)
    {
-       NodeIterator old = *this;
+       ListNodeIterator old = *this;
        --(*this);
        return old;
    }
@@ -120,7 +120,7 @@ public:
    
    ConstListNodeIterator operator++ (int)
    {
-       NodeIterator old = *this;
+       ConstListNodeIterator old = *this;
        ++(*this);
        return old;
    }
@@ -133,7 +133,7 @@ public:
    
    ConstListNodeIterator operator-- (int)
    {
-       NodeIterator old = *this;
+       ConstListNodeIterator old = *this;
        --(*this);
        return old;
    }
@@ -148,7 +148,7 @@ public:
    ConstListNodeIterator(const ConstListNodeIterator& node) = default;
 
    ConstListNodeIterator(const ListNodeIterator<T>& node)
-	   :node(node.node_) {};
+	   :node_(node.node_) {};
 
    ConstListNodeIterator()
     :node_(nullptr) {};
@@ -216,6 +216,7 @@ public:
         new_node->prev->next = new_node;
         new_node->next->prev = new_node;
         size_++;
+		return new_node;
     }
     
     iterator insert(const_iterator it, const T& val)
@@ -231,6 +232,8 @@ public:
         {
             insert(it, *itl);
         }
+
+		return it;
     }
     
     
@@ -258,7 +261,7 @@ public:
     
     iterator erase(const_iterator it)
     {
-        if (size_ == 0)
+        if (size_ == 0 || it.node_ == end_)
         {
             return end_;
         }
@@ -379,7 +382,6 @@ public:
     
     template<class X, class Arena2>
     List& operator=(const List<X, Arena2>& l)
-        :List()
     {
         clear();
         insert(end_, l);

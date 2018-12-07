@@ -9,8 +9,9 @@ struct Pair
 {
     X first;
     Y second;
-    Pair(const X& x, const Y& y)
-        :first(x), second(y) {};
+	template<class U, class V>
+    Pair(U&& x, V&& y)
+        :first(std::forward<U>(x)), second(std::forward<V>(y)) {};
     Pair(){};
 };
 
