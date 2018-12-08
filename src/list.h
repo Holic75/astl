@@ -28,7 +28,7 @@ public:
     ListNode(const T& val)
         :value(val), prev(nullptr), next(nullptr){};
     ListNode()
-        :prev(nullptr), next(nullptr){};
+        :prev(nullptr), next(nullptr), value(){};
 template<class ...Args>
     ListNode(ListNode* prv, ListNode* nxt, Args... args)
         : value(std::forward<Args>(args)...), prev(prev), next(nxt){};
@@ -45,6 +45,7 @@ class ListNodeIterator
    ListNode<T>* node_; 
 public:
    T* operator->() {return &(node_->value);};
+   T* operator->() const { return &(node_->value); };
    friend const T& operator *(const ListNodeIterator &it)
    {
        return it.node_->value;
@@ -81,10 +82,10 @@ public:
        return old;
    }
    
-   bool operator==(const ListNodeIterator<T>& b) { return node_ == b.node_; };
-   bool operator!=(const ListNodeIterator<T>& b) { return node_ != b.node_; };
-   bool operator==(const ConstListNodeIterator<T>& b) { return node_ == b.node_; };
-   bool operator!=(const ConstListNodeIterator<T>& b) { return node_ != b.node_; };
+   bool operator==(const ListNodeIterator<T>& b) const { return node_ == b.node_; };
+   bool operator!=(const ListNodeIterator<T>& b) const { return node_ != b.node_; };
+   bool operator==(const ConstListNodeIterator<T>& b) const { return node_ == b.node_; };
+   bool operator!=(const ConstListNodeIterator<T>& b) const { return node_ != b.node_; };
 
    ListNodeIterator(const ListNodeIterator& node) = default;
    ListNodeIterator()
@@ -105,7 +106,7 @@ class ConstListNodeIterator
 {
    ListNode<T>* node_; 
 public:
-   const T*  operator->() {return &(node_->value);};
+   const T*  operator->() const {return &(node_->value);};
    friend const T& operator *(const ConstListNodeIterator &it)
    {
        return it->value;
@@ -139,10 +140,10 @@ public:
    }
    
 
-   bool operator==(const ListNodeIterator<T>& b) { return node_ == b.node_; };
-   bool operator!=(const ListNodeIterator<T>& b) { return node_ != b.node_; };
-   bool operator==(const ConstListNodeIterator<T>& b) { return node_ == b.node_; };
-   bool operator!=(const ConstListNodeIterator<T>& b) { return node_ != b.node_; };
+   bool operator==(const ListNodeIterator<T>& b) const { return node_ == b.node_; };
+   bool operator!=(const ListNodeIterator<T>& b) const { return node_ != b.node_; };
+   bool operator==(const ConstListNodeIterator<T>& b) const { return node_ == b.node_; };
+   bool operator!=(const ConstListNodeIterator<T>& b) const { return node_ != b.node_; };
 
 
    ConstListNodeIterator(const ConstListNodeIterator& node) = default;
@@ -161,14 +162,6 @@ private:
 };
 
 
-template<class T> bool operator==(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator==(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator==(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ == b.node_; };
-template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };
-template<class T> bool operator!=(const ListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };
-template<class T> bool operator!=(const ConstListNodeIterator<T>& a, const ConstListNodeIterator<T>& b) { return a.node_ != b.node_; };
-template<class T> bool operator!=(const ListNodeIterator<T>& a, const ListNodeIterator<T>& b) { return a.node_ != b.node_; };
 
 template <class T, class Arena>
 class List
@@ -181,9 +174,7 @@ class List
 	void initialize()
 	{
 		end_ = arena_.create();
-		head_ = arena_.create();
-		head_->next = end_;
-		end_->prev = head_;
+        head_ = end_;
 		size_ = 0;
 	}
     
@@ -199,9 +190,9 @@ public:
     typedef ListNodeIterator<T> iterator;
     typedef ConstListNodeIterator<T> const_iterator;
     
-    iterator begin() {return head_->next;};
+    iterator begin() {return head_;};
     iterator end() {return end_;};
-    const_iterator begin() const {return head_->next;};
+    const_iterator begin() const {return head_;};
     const_iterator end() const {return end_;};
     
     
@@ -214,8 +205,26 @@ public:
         {
             return end_;
         }
-        new_node->prev->next = new_node;
-        new_node->next->prev = new_node;
+        
+        if (size_ == 0)
+        {
+            head_ = new_node;
+            head_->next = end_;
+            end_->prev = head_;
+        }
+        else
+        {
+			if (new_node->prev != nullptr)
+			{
+				new_node->prev->next = new_node;
+			}
+			else
+			{
+				head_ = new_node;
+			}
+            new_node->next->prev = new_node;
+        }
+              
         size_++;
 		return new_node;
     }
@@ -267,11 +276,26 @@ public:
             return end_;
         }
         iterator next_it = it.node_->next;
-        it.node_->prev->next = it.node_->next;
-        it.node_->next->prev = it.node_->prev;
+        
+        if (it == begin())
+        {
+            head_ = head_->next;
+        }
+        else
+        {
+            it.node_->prev->next = it.node_->next;
+            it.node_->next->prev = it.node_->prev;
+        }
         
         arena_.destroy(it.node_);
         size_--;
+
+		if (size_ == 0)
+		{
+			head_ = end_;
+			end_->prev = nullptr;
+		}
+
         return next_it;
     }
     
@@ -287,15 +311,14 @@ public:
     
     void clear()
     {
-
-        auto node_ptr = head_->next;
+        auto node_ptr = head_;
         while(node_ptr != end_)
         {
             node_ptr = node_ptr->next;
             arena_.destroy(node_ptr->prev);
         }       
-        head_->next = end_;
-        end_->prev = head_;
+        head_ = end_;
+        end_->prev = nullptr;
         size_ = 0;
     }
     
@@ -412,14 +435,13 @@ public:
     ~List()
     {
         clear();
-        arena_.destroy(head_);
         arena_.destroy(end_);
     }
     
 };
 
 template<class T, size_t N>
-using StaticList = List<T, StaticArena<ListNode<T>, N + 2>>;
+using StaticList = List<T, StaticArena<ListNode<T>, N + 1>>;
 
 
 }

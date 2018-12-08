@@ -141,10 +141,10 @@ public:
         return BitReference<T>(b.byte_ref_, b.bit_id_);
     }
 
-	bool operator==(const BitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
-	bool operator==(const ConstBitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
-	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
-	bool operator!=(const ConstBitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
+	bool operator==(const BitVectorIterator<T>& b) const { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator==(const ConstBitVectorIterator<T>& b) const { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator!=(const BitVectorIterator<T>& b) const { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
+	bool operator!=(const ConstBitVectorIterator<T>& b) const { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
 
 	template<class>  friend class ConstBitVectorIterator;
 };
@@ -210,10 +210,10 @@ public:
 	ConstBitVectorIterator(const BitVectorIterator<T>& b)
 		:byte_ref_(b.byte_ref_), bit_id_(b.bit_id_) {};
 
-	bool operator==(const BitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
-	bool operator==(const ConstBitVectorIterator<T>& b) { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
-	bool operator!=(const BitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
-	bool operator!=(const ConstBitVectorIterator<T>& b) { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
+	bool operator==(const BitVectorIterator<T>& b) const { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator==(const ConstBitVectorIterator<T>& b) const { return byte_ref_ == b.byte_ref_ && bit_id_ == b.bit_id_; };
+	bool operator!=(const BitVectorIterator<T>& b) const { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
+	bool operator!=(const ConstBitVectorIterator<T>& b) const { return byte_ref_ != b.byte_ref_ || bit_id_ != b.bit_id_; };
 
 	template<class>  friend class BitVectorIterator;
 };

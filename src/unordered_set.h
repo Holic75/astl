@@ -22,31 +22,31 @@ struct UnorderedSetBucket
 
 
 template<class Key, class Arena = HeapArena<ListNode<const Key>>, 
-          class Allocator = HeapAllocator<typename UnorderedSetBucket<Key, Arena>>>
+          class Allocator = HeapAllocator<typename aux::UnorderedSetBucket<Key, Arena>>>
 class UnorderedSet
 {
     List<const Key, Arena> data_;
-    Vector<typename UnorderedSetBucket<Key, Arena>, Allocator, allocationPolicyFixed> bins_;//keeps first iterator of next bin
+    Vector<typename aux::UnorderedSetBucket<Key, Arena>, Allocator, allocationPolicyFixed> bins_;//keeps first iterator of next bin
     float max_load_factor_ = 0.75;
     
     static const size_t MIN_HASH_BINS_ = 10;
     
-    size_t getBin(const Key& key)
+    size_t getBin(const Key& key) const
     {
-        return hash(key) % (bins_.size() - 1);
+        return hash(key) % (bins_.size());
     }
-    
+
     
 public:
     typedef typename List<const Key, Arena>::iterator iterator;
     typedef typename List<const Key, Arena>::const_iterator const_iterator;
     
     size_t size() {return data_.size();};
-    size_t numBins() { return bins_.size() - 1;};
+    size_t numBins() { return bins_.size();};
 	size_t binCount(size_t bin_id) const { return bins_[bin_id].count; };
 
-    UnorderedMap(size_t min_hash_bins = 10)
-        :bins_(min_hash_bins + 1)
+    UnorderedSet(size_t min_hash_bins = MIN_HASH_BINS_)
+        :bins_(min_hash_bins )
     {
         for (size_t i =0; i<bins_.size();i++)
         {
@@ -66,13 +66,15 @@ public:
         }
         
       
-        for (auto it = bins_[bin].it; it != bins_[bin+1].it; it++)
+        auto it = bins_[bin].it;
+        for (size_t i = 0; i < bins_[bin].count; i++)
         {
-            if (*it == key)
+            if ((*it) == key)
             {
                 return it;
             }     
-        }     
+            it++;
+        }       
         return data_.end();           
     }     
     
@@ -87,13 +89,15 @@ public:
         }
         
       
-        for (auto it = bins_[bin].it; it != bins_[bin+1].it; it++)
+        auto it = bins_[bin].it;
+        for (size_t i = 0; i < bins_[bin].count; i++)
         {
-            if (*it == key)
+            if ((*it) == key)
             {
                 return it;
             }     
-        }     
+            it++;
+        }       
         return data_.end();           
     }
         
@@ -104,24 +108,14 @@ public:
         if (it == data_.end())
         {
             size_t bin = getBin(key);
-			it = data_.emplace(bins_[bin].it, key));
+			it = data_.emplace(bins_[bin].it, key);
             if (it == end())
             {// failed to insert into the list
                 return it;
             }
             bins_[bin].count++;
-            auto old_it = bins_[bin];
-            for (size_t i = bin + 1; i > 0; i--)
-            {
-                if (bins_[i - 1] == old_it)
-                {
-                    bins_[i - 1] = it;
-                }
-                else
-                {
-                    break;
-                }
-            }      
+            bins_[bin].it = it;
+   
             if (data_.size() > max_load_factor_*numBins())
             {
                 rehash(numBins()*2);
@@ -140,21 +134,15 @@ public:
 			auto old_it = it;
 			it = data_.erase(it);
             bins_[bin].count--;
-			if (bins_[bin].it == it)
-			{ //if it is first element update all corresponding bins
-				for (size_t i = bin + 1; i > 0; i--)
-				{
-					if (bins_[i - 1] == old_it)
-					{
-						bins_[i - 1] = it;
-					}
-					else
-					{
-						break;
-					}
-				}
+            if (bins_[bin].count == 0)
+            {
+                bins_[bin].it = end();
+            }
+            else
+            {
+                bins_[bin].it = it;
+            }
 
-			}
 		}
 		return it;
 	}
@@ -172,7 +160,7 @@ public:
     
     bool contains(const Key& key) const
     {
-        return find(key) != data_.end();
+        return find(key) != end();
     }
     
     
@@ -182,6 +170,7 @@ public:
         for (size_t i = 0; i < bins_.size(); i++)
         {
             bins_[i].it = data_.end();
+			bins_[i].count = 0;
         }
     }
     
@@ -203,7 +192,7 @@ public:
     };
     
     template<class Key2,  class Arena2, class Allocator2>
-    UnorderedSet(const UnorderedSet<Key2, T2, Arena2, Allocator2>& m)
+    UnorderedSet(const UnorderedSet<Key2, Arena2, Allocator2>& m)
         :UnorderedSet(m.numBins())
     {
         for (auto it = m.begin(); it != m.end(); it++)
@@ -261,11 +250,16 @@ public:
     
 	bool rehash(size_t bucket_count)
 	{
-		if (!bins_.resize(bucket_count + 1))
+        if (bucket_count == numBins())
+        {
+            return true;
+        }
+        
+		if (!bins_.resize(bucket_count))
 		{
 			return false;
 		}
-
+        
 		List<const Key, Arena> l = std::move(data_);
 
 		for (int i = 0; i < bins_.size(); i++)
@@ -277,7 +271,7 @@ public:
 		auto it = l.begin();
 		while (it != l.end())
 		{
-			insert(it->first, std::move(it->second));
+			insert(*it);
 			it = l.erase(it);
 		}
 		return true;
@@ -286,9 +280,9 @@ public:
 };
 
 template<class Key, size_t N, size_t Bins>
-using StaticUnorderedSet = UnorderedMap<Key, StaticArena<ListNode<const Key>, N + 2>, 
-                            FixedSizeAllocator<typename UnorderedSetBucket<Key, StaticArena<ListNode<const Key>, N + 2>> , 
-                            (Bins > 10 ? Bins : 10) + 1>>;
+using StaticUnorderedSet = UnorderedMap<Key, StaticArena<ListNode<const Key>, N + 1>, 
+                            FixedSizeAllocator<typename aux::UnorderedSetBucket<Key, StaticArena<ListNode<const Key>, N + 1>> , 
+                            (Bins > 10 ? Bins : 10)>>;
     
 }
 
