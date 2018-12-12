@@ -100,6 +100,8 @@ public:
         }
         return *this;
     }
+    
+    bool empty() {return f_ == nullptr;};
 };   
 }
 

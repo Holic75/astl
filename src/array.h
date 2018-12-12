@@ -42,6 +42,16 @@ struct Array
             data_[i] = x[i];
         }  
     }
+    
+    
+
+    Array& operator=(const T& x)
+    {
+        for (int i = 0; i< N; i++)
+        {
+            data_[i] = x;
+        }  
+    }
 
 	T* data() { return &data_[0]; };
 	const T* data() const { return &data_[0]; };

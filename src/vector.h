@@ -416,6 +416,14 @@ public:
 		copyFromBuffer(l.begin(), l.size());		
 		return *this;
 	}
+    
+    Vector& operator=(const T& x)
+    {
+        for (int i = 0; i< size_; i++)
+        {
+            data_[i] = x;
+        }  
+    }
 
     template<class X, class Allocator2, AllocationPolicyFunc allocPolicy2>
     Vector& operator=(const Vector<X, Allocator2, allocPolicy2>& x)
